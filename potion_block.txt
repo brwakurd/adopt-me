@@ -1,0 +1,116 @@
+local foundPet = false  -- Initialize foundPet
+task.wait(49)
+ 
+-- Define blocked pets by ID
+local blockedPets = {
+    ["blocked_pet_id_1"] = "ocean_2024_lionfish",
+    ["blocked_pet_id_2"] = "ocean_2024_sea_angel",
+    ["blocked_pet_id_2"] = "regular_pet_egg",
+    ["blocked_pet_id_2"] = "cracked_egg",
+    ["blocked_pet_id_2"] = "garden_2024_egg",
+    ["blocked_pet_id_2"] = "royal_egg",
+}
+ 
+-- Main loop
+while true do
+    print("Starting main loop...")
+ 
+    -- Attempt to get Pets and Food data
+    local Pets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
+    local Food = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food or {}
+ 
+    if not Pets then
+        print("No pets found in inventory.")
+        break
+    end
+ 
+    for k, v in pairs(Pets) do
+        print("Checking pet ID:", v.id or "nil")
+ 
+        -- Check if pet is in blocked list
+        if v and v.properties and not blockedPets[v.id] then
+            foundPet = true
+            print("Applying potion to pet:", v.id)
+ 
+            -- Pet processing loop
+            while true do
+                print("Entering pet processing loop for pet:", v.id)
+ 
+                local updatedPets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
+                local currentPet = nil
+ 
+                for _, pet in pairs(updatedPets) do
+                    if pet.unique == v['unique'] then
+                        currentPet = pet
+                        break
+                    end
+                end
+ 
+                if currentPet and currentPet.properties and currentPet.properties.age and currentPet.properties.age < 6 then
+                    print("Equipping pet with age less than 6:", currentPet.id, "Unique ID:", currentPet['unique'])
+                    game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(currentPet['unique'])
+ 
+                    -- Process food items
+                    for foodKey, foodValue in pairs(Food) do
+                        if foodValue and foodValue.id == "pet_age_potion" then
+                            print("Equipping food with ID pet_age_potion:", foodValue['unique'])
+                            game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(foodValue['unique'])
+ 
+                            wait(1)
+                            local args = {
+                                [1] = "__Enum_PetObjectCreatorType_2",
+                                [2] = {
+                                    ["unique_id"] = foodValue['unique'],
+                                    ["possible_grabber_pet_unique"] = currentPet['unique'],
+                                    ["pet_unique"] = currentPet['unique'],
+                                    ["grab_immediately"] = false
+                                }
+                            }
+ 
+                            local success, err = pcall(function()
+                                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetObjectAPI/CreatePetObject"):InvokeServer(unpack(args))
+                            end)
+ 
+                            if not success then
+                                print("Error invoking CreatePetObject API:", err)
+                            else
+                                print("Successfully invoked CreatePetObject API.")
+                            end
+ 
+                            wait(10)
+ 
+                            -- Check pet age after feeding
+                            updatedPets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
+                            local updatedPet = nil
+                            for _, pet in pairs(updatedPets) do
+                                if pet.unique == currentPet['unique'] then
+                                    updatedPet = pet
+                                    break
+                                end
+                            end
+ 
+                            if updatedPet and updatedPet.properties and updatedPet.properties.age and updatedPet.properties.age < 6 then
+                                print("Pet age is still less than 6, repeating process for pet:", currentPet['unique'])
+                            else
+                                print("Pet age is now 6 or older, breaking for this pet:", currentPet['unique'])
+                                break
+                            end
+                        end
+                    end
+                else
+                    print("Pet age is 6 or older, moving to next pet:", currentPet and currentPet['unique'] or "unknown")
+                    break
+                end
+            end
+        else
+            print("Pet is blocked or doesn't match target criteria:", v.id or "nil")
+        end
+    end
+ 
+    if not foundPet then
+        print("No eligible pets found after checking. Exiting loop...")
+        break
+    end
+ 
+    wait(5)  -- Add a small delay before repeating the main loop
+end
