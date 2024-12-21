@@ -1,7 +1,7 @@
 local foundPet = false  -- Initialize foundPet
 task.wait(49)
 
--- Define blocked pets by ID
+-- Define blocked pets and food items by ID
 local blockedPets = {
     ["ocean_2024_lionfish"] = true,
     ["ocean_2024_sea_angel"] = true,
@@ -19,8 +19,8 @@ while true do
     local Pets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
     local Food = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food or {}
 
-    if not Pets then
-        print("No pets found in inventory.")
+    if not Pets or not Food then
+        print("No pets or food found in inventory.")
         break
     end
 
@@ -51,7 +51,8 @@ while true do
                     game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(currentPet['unique'])
 
                     -- Process food items
-                    for foodKey, foodValue in pairs(Food) do
+                    local updatedFoods = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food or {}
+                    for foodKey, foodValue in pairs(updatedFoods) do
                         if foodValue and foodValue.id == "pet_age_potion" then
                             print("Equipping food with ID pet_age_potion:", foodValue['unique'])
                             game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(foodValue['unique'])
