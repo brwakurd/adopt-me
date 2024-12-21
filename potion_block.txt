@@ -9,6 +9,8 @@ local blockedPets = {
     ["cracked_egg"] = true,
     ["garden_2024_egg"] = true,
     ["royal_egg"] = true,
+    ["winter_2024_winter_fawn"] = true,
+    ["winter_2024_winter_doe"] = true,
 }
 
 -- Main loop
