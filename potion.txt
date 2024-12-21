@@ -41,7 +41,7 @@ while true do
                     end
                 end
 
-                if currentPet and currentPet.properties and currentPet.properties.age and currentPet.properties.age > 6 then
+                if currentPet and currentPet.properties and currentPet.properties.age and (currentPet.properties.age >= 6) then
                     print("Skipping pet because age is less than 6. Searching for another pet.")
                     foundPet = false  -- Reset foundPet to ensure the loop continues
                     break
