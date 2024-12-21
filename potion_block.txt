@@ -61,9 +61,7 @@ while true do
                                 [1] = "__Enum_PetObjectCreatorType_2",
                                 [2] = {
                                     ["unique_id"] = foodValue['unique'],
-                                    ["possible_grabber_pet_unique"] = currentPet['unique'],
                                     ["pet_unique"] = currentPet['unique'],
-                                    ["grab_immediately"] = false
                                 }
                             }
 
