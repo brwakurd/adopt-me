@@ -23,7 +23,7 @@ while true do
         print("Checking pet ID:", v.id or "nil")
         
         -- Allow only the specified pet and check age eligibility
-        if v and v.properties and v.id == allowedPet and v.properties.age and v.properties.age < 6 then
+        if v and v.properties and v.id == allowedPet and v.properties.age and v.properties.age <= 6 then
             foundPet = true
             print("Applying potion to pet:", v.id)
 
