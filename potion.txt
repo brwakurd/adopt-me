@@ -1,12 +1,14 @@
 local foundPet = false  -- Initialize foundPet
 task.wait(3)
+local x = true
 
 -- Define allowed pet by ID
 local allowedPet = "winter_2024_mistletroll"
 
 -- Main loop
-while true do
+while x do
     print("Starting main loop...")
+    x = false
 
     -- Attempt to get Pets and Food data
     local Pets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
@@ -42,7 +44,7 @@ while true do
                 end
 
                 if currentPet and currentPet.properties and currentPet.properties.age and (currentPet.properties.age >= 6) then
-                    print("Skipping pet because age is less than 6. Searching for another pet.")
+                    print("Skipping pet because age is 6 or above. Searching for another pet.")
                     foundPet = false  -- Reset foundPet to ensure the loop continues
                     break
                 elseif currentPet then
@@ -56,26 +58,59 @@ while true do
                             print("Equipping food with ID pet_age_potion:", foodValue['unique'])
                             game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(foodValue['unique'])
                             
-                            wait(1)
-                            local args = {
+                            task.wait(0.2)
+                            local args1 = {
                                 [1] = "__Enum_PetObjectCreatorType_2",
                                 [2] = {
                                     ["unique_id"] = foodValue['unique'],
                                     ["pet_unique"] = currentPet['unique'],
                                 }
                             }
-
+                        
                             local success, err = pcall(function()
-                                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetObjectAPI/CreatePetObject"):InvokeServer(unpack(args))
+                                game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetObjectAPI/CreatePetObject"):InvokeServer(unpack(args1))
+                            end)
+                            task.wait(0.2)
+                            
+                            local args2 = {
+                                [1] = workspace.Pets.Mistletroll,
+                                [2] = workspace.PetObjects.AgePotion
+                            }
+                            
+                            game:GetService("ReplicatedStorage").API:FindFirstChild("PetObjectAPI/GrabPetObject"):FireServer(unpack(args2))
+                            task.wait(0.2)
+
+                            local args = {
+                                [1] = workspace.PetObjects.AgePotion,
+                                [2] = currentPet['unique']
+                            }
+                            wait(.5)
+                            
+                            local success, err = pcall(function()
+                                game:GetService("ReplicatedStorage").API:FindFirstChild("PetAPI/ConsumeFoodObject"):FireServer(unpack(args))
                             end)
                             
                             if not success then
-                                print("Error invoking CreatePetObject API:", err)
+                                print("Error invoking ConsumeFoodObject API:", err)
                             else
-                                print("Successfully invoked CreatePetObject API.")
+                                print("Successfully invoked ConsumeFoodObject API.")
+                            end
+                            task.wait(0.3)
+
+                            -- Equip a temporary pet
+                            for tempKey, tempPet in pairs(updatedPets) do
+                                if tempPet.unique ~= currentPet['unique'] then
+                                    print("Equipping temporary pet:", tempPet.id, "Unique ID:", tempPet['unique'])
+                                    game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(tempPet['unique'])
+                                    task.wait(0.1)
+                                    break
+                                end
                             end
 
-                            wait(10)
+                            -- Re-equip the original pet
+                            print("Re-equipping original pet:", currentPet.id, "Unique ID:", currentPet['unique'])
+                            game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(currentPet['unique'])
+                            task.wait(0.1)
 
                             -- Check pet age after feeding
                             updatedPets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
