@@ -1,4 +1,5 @@
-local foundPet = false  -- Initialize foundPet
+-- Initialize variables
+local foundPet = false  -- Track if an eligible pet was found
 task.wait(3)
 local x = true
 
@@ -11,8 +12,17 @@ while x do
     x = false
 
     -- Attempt to get Pets and Food data
-    local Pets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
-    local Food = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food or {}
+    local success, data = pcall(function()
+        return require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()
+    end)
+
+    if not success or not data then
+        print("Failed to retrieve data from ClientData. Error:", data or "Unknown error")
+        break
+    end
+
+    local Pets = data[game.Players.LocalPlayer.Name].inventory.pets or {}
+    local Food = data[game.Players.LocalPlayer.Name].inventory.food or {}
 
     if not Pets or not Food then
         print("No pets or food found in inventory.")
@@ -21,9 +31,9 @@ while x do
 
     foundPet = false  -- Reset foundPet for this loop
 
-    for k, v in pairs(Pets) do
+    for _, v in pairs(Pets) do
         print("Checking pet ID:", v.id or "nil")
-        
+
         -- Allow only the specified pet and check age eligibility
         if v and v.properties and v.id == allowedPet and v.properties.age and v.properties.age <= 6 then
             foundPet = true
@@ -33,7 +43,16 @@ while x do
             while true do
                 print("Entering pet processing loop for pet:", v.id)
 
-                local updatedPets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
+                local updatedPets = {}
+                success, updatedPets = pcall(function()
+                    return require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
+                end)
+
+                if not success or not updatedPets then
+                    print("Failed to retrieve updated pets data. Error:", updatedPets or "Unknown error")
+                    break
+                end
+
                 local currentPet = nil
 
                 for _, pet in pairs(updatedPets) do
@@ -43,21 +62,44 @@ while x do
                     end
                 end
 
-                if currentPet and currentPet.properties and currentPet.properties.age and (currentPet.properties.age >= 6) then
+                if currentPet and currentPet.properties and currentPet.properties.age and currentPet.properties.age >= 6 then
                     print("Skipping pet because age is 6 or above. Searching for another pet.")
                     foundPet = false  -- Reset foundPet to ensure the loop continues
                     break
                 elseif currentPet then
                     print("Equipping pet:", currentPet.id, "Unique ID:", currentPet['unique'])
-                    game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(currentPet['unique'])
+                    success = pcall(function()
+                        game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(currentPet['unique'])
+                    end)
+
+                    if not success then
+                        print("Failed to equip pet. Unique ID:", currentPet['unique'])
+                        break
+                    end
 
                     -- Process food items
-                    local updatedFoods = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food or {}
-                    for foodKey, foodValue in pairs(updatedFoods) do
+                    local updatedFoods = {}
+                    success, updatedFoods = pcall(function()
+                        return require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.food or {}
+                    end)
+
+                    if not success or not updatedFoods then
+                        print("Failed to retrieve updated food data. Error:", updatedFoods or "Unknown error")
+                        break
+                    end
+
+                    for _, foodValue in pairs(updatedFoods) do
                         if foodValue and foodValue.id == "pet_age_potion" then
                             print("Equipping food with ID pet_age_potion:", foodValue['unique'])
-                            game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(foodValue['unique'])
-                            
+                            success = pcall(function()
+                                game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(foodValue['unique'])
+                            end)
+
+                            if not success then
+                                print("Failed to equip food. Unique ID:", foodValue['unique'])
+                                break
+                            end
+
                             task.wait(0.2)
                             local args1 = {
                                 [1] = "__Enum_PetObjectCreatorType_2",
@@ -66,42 +108,61 @@ while x do
                                     ["pet_unique"] = currentPet['unique'],
                                 }
                             }
-                        
-                            local success, err = pcall(function()
+
+                            success, err = pcall(function()
                                 game:GetService("ReplicatedStorage"):WaitForChild("API"):WaitForChild("PetObjectAPI/CreatePetObject"):InvokeServer(unpack(args1))
                             end)
-                            task.wait(0.2)
-                            
-                            local args2 = {
-                                [1] = workspace.Pets.Mistletroll,
-                                [2] = workspace.PetObjects.AgePotion
-                            }
-                            
-                            game:GetService("ReplicatedStorage").API:FindFirstChild("PetObjectAPI/GrabPetObject"):FireServer(unpack(args2))
-                            task.wait(0.2)
+                            if not success then
+                                print("Failed to create pet object. Error:", err)
+                            end
 
-                            local args = {
-                                [1] = workspace.PetObjects.AgePotion,
+                            task.wait(0.2)
+                            local args2 = {
+                                [1] = workspace:FindFirstChild("Pets") and workspace.Pets:FindFirstChild("Mistletroll"),
+                                [2] = workspace:FindFirstChild("PetObjects") and workspace.PetObjects:FindFirstChild("AgePotion")
+                            }
+
+                            if not args2[1] or not args2[2] then
+                                print("One or more objects do not exist in the workspace. Aborting operation.")
+                                break
+                            end
+
+                            success, err = pcall(function()
+                                game:GetService("ReplicatedStorage").API:FindFirstChild("PetObjectAPI/GrabPetObject"):FireServer(unpack(args2))
+                            end)
+                            if not success then
+                                print("Failed to grab pet object. Error:", err)
+                            end
+
+                            task.wait(0.2)
+                            local args3 = {
+                                [1] = workspace.PetObjects:FindFirstChild("AgePotion"),
                                 [2] = currentPet['unique']
                             }
-                            wait(.5)
-                            
-                            local success, err = pcall(function()
-                                game:GetService("ReplicatedStorage").API:FindFirstChild("PetAPI/ConsumeFoodObject"):FireServer(unpack(args))
+
+                            success, err = pcall(function()
+                                game:GetService("ReplicatedStorage").API:FindFirstChild("PetAPI/ConsumeFoodObject"):FireServer(unpack(args3))
                             end)
-                            
                             if not success then
-                                print("Error invoking ConsumeFoodObject API:", err)
+                                print("Error invoking ConsumeFoodObject API. Error:", err)
                             else
                                 print("Successfully invoked ConsumeFoodObject API.")
                             end
+
                             task.wait(0.3)
 
                             -- Equip a temporary pet
-                            for tempKey, tempPet in pairs(updatedPets) do
+                            for _, tempPet in pairs(updatedPets) do
                                 if tempPet.unique ~= currentPet['unique'] then
                                     print("Equipping temporary pet:", tempPet.id, "Unique ID:", tempPet['unique'])
-                                    game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(tempPet['unique'])
+                                    success = pcall(function()
+                                        game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(tempPet['unique'])
+                                    end)
+
+                                    if not success then
+                                        print("Failed to equip temporary pet. Unique ID:", tempPet['unique'])
+                                    end
+
                                     task.wait(0.1)
                                     break
                                 end
@@ -109,11 +170,27 @@ while x do
 
                             -- Re-equip the original pet
                             print("Re-equipping original pet:", currentPet.id, "Unique ID:", currentPet['unique'])
-                            game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(currentPet['unique'])
+                            success = pcall(function()
+                                game:GetService("ReplicatedStorage").API["ToolAPI/Equip"]:InvokeServer(currentPet['unique'])
+                            end)
+
+                            if not success then
+                                print("Failed to re-equip original pet. Unique ID:", currentPet['unique'])
+                            end
+
                             task.wait(0.1)
 
                             -- Check pet age after feeding
-                            updatedPets = require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
+                            updatedPets = {}
+                            success, updatedPets = pcall(function()
+                                return require(game.ReplicatedStorage.ClientModules.Core.ClientData).get_data()[game.Players.LocalPlayer.Name].inventory.pets or {}
+                            end)
+
+                            if not success or not updatedPets then
+                                print("Failed to retrieve pets data after feeding. Error:", updatedPets or "Unknown error")
+                                break
+                            end
+
                             local updatedPet = nil
                             for _, pet in pairs(updatedPets) do
                                 if pet.unique == currentPet['unique'] then
@@ -125,13 +202,13 @@ while x do
                             if updatedPet and updatedPet.properties and updatedPet.properties.age and updatedPet.properties.age < 6 then
                                 print("Pet age is still less than 6, repeating process for pet:", currentPet['unique'])
                             else
-                                print("Pet age is now 6 or older, breaking for this pet:", currentPet['unique'])
+                                print("Pet age is now 6 or older, breaking for this pet:", currentPet and currentPet['unique'] or "unknown")
                                 break
                             end
                         end
                     end
                 else
-                    print("Pet age is 6 or older, moving to next pet:", currentPet and currentPet['unique'] or "unknown")
+                    print("Pet age is 6 or older, moving to next pet.")
                     break
                 end
             end
@@ -139,11 +216,11 @@ while x do
             print("Pet is not the allowed pet or doesn't match target criteria:", v.id or "nil")
         end
     end
-    
+
     if not foundPet then
         print("No eligible pets found after checking. Exiting loop...")
         break
     end
 
-    wait(5)  -- Add a small delay before repeating the main loop
+    task.wait(5)  -- Add a small delay before repeating the main loop
 end
