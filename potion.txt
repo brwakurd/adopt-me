@@ -116,7 +116,7 @@ while x do
                                 print("Failed to create pet object. Error:", err)
                             end
 
-                            task.wait(0.2)
+                            task.wait(0.1)
                             local args2 = {
                                 [1] = workspace:FindFirstChild("Pets") and workspace.Pets:FindFirstChild("Mistletroll"),
                                 [2] = workspace:FindFirstChild("PetObjects") and workspace.PetObjects:FindFirstChild("AgePotion")
@@ -134,7 +134,7 @@ while x do
                                 print("Failed to grab pet object. Error:", err)
                             end
 
-                            task.wait(0.2)
+                            task.wait(0.1)
                             local args3 = {
                                 [1] = workspace.PetObjects:FindFirstChild("AgePotion"),
                                 [2] = currentPet['unique']
@@ -149,7 +149,7 @@ while x do
                                 print("Successfully invoked ConsumeFoodObject API.")
                             end
 
-                            task.wait(0.3)
+                            task.wait(0.7)
 
                             -- Equip a temporary pet
                             for _, tempPet in pairs(updatedPets) do
